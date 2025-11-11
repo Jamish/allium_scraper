@@ -7,9 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	// Given a roms root path, return list of systems and games: { system, game }
 	getRomsList: (root: string) => ipcRenderer.invoke('get-roms-list', { root }),
 	// Save image buffer as output/<system>/<game>.png
-	saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => ipcRenderer.invoke('save-image-for-game', { system, game, buffer })
-	,getThumbnail: (system: string, game: string) => ipcRenderer.invoke('get-thumbnail', { system, game })
-	,openExternal: (url: string) => ipcRenderer.invoke('open-external', { url })
+	saveImageForGame: (system: string, game: string, buffer: ArrayBuffer, root?: string) => ipcRenderer.invoke('save-image-for-game', { system, game, buffer, root }),
+	getThumbnail: (system: string, game: string, root?: string) => ipcRenderer.invoke('get-thumbnail', { system, game, root }),
+	openExternal: (url: string) => ipcRenderer.invoke('open-external', { url })
 });
 
 export {};

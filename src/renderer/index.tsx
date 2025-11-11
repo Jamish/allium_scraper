@@ -84,11 +84,11 @@ function App() {
       await Promise.all((list || []).map(async (l: any) => {
         try {
           // @ts-ignore
-          const t = await window.electronAPI.getThumbnail(l.system, l.game);
+          const t = await window.electronAPI.getThumbnail(l.system, l.game, selected);
           if (t) {
             const k = `${l.system}/${l.game}`;
             previews[k] = t as string;
-            savedPaths[k] = `output/${l.system}/Imgs/${l.game}.png`;
+            savedPaths[k] = `${selected}/${l.system}/Imgs/${l.game}.png`;
           }
         } catch (err) {
           // ignore per-item errors
@@ -130,7 +130,7 @@ function App() {
         try {
           const arrayBuffer = await file.arrayBuffer();
           // @ts-ignore
-          const result = await window.electronAPI.saveImageForGame(system, game, arrayBuffer);
+          const result = await window.electronAPI.saveImageForGame(system, game, arrayBuffer, romsRoot ?? undefined);
           if (result && result.success) {
             setSavedPath(result.path ?? null);
             setRomSavedPaths((prev) => ({ ...prev, [key]: result.path ?? '' }));
@@ -236,8 +236,8 @@ declare global {
       chooseRomsDirectory: () => Promise<string | null>;
       getRomsList: (root: string) => Promise<Array<{ system: string; game: string }>>;
       saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
-      getThumbnail: (system: string, game: string) => Promise<string | null>;
-      openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+  getThumbnail: (system: string, game: string, root?: string) => Promise<string | null>;
+  openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }

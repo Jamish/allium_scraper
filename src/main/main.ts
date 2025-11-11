@@ -109,16 +109,16 @@ ipcMain.handle('get-roms-list', async (_, args: { root: string }) => {
 });
 
 // Save image for a specific game to output/<system>/<game>.png
-ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: string; buffer: Uint8Array | ArrayBuffer }) => {
+ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: string; buffer: Uint8Array | ArrayBuffer; root: string }) => {
   try {
-    const { system, game, buffer } = args;
+    const { system, game, buffer, root } = args;
     const inputBuffer = Buffer.from(buffer as any);
     const pngBuffer = await sharp(inputBuffer)
       .resize({ width: 250, height: 250, fit: 'inside' })
       .png()
       .toBuffer();
 
-  const outputDir = path.join(process.cwd(), 'output', system, 'Imgs');
+  const outputDir = path.join(root, system, 'Imgs');
   await fs.mkdir(outputDir, { recursive: true });
   const outPath = path.join(outputDir, `${game}.png`);
     await fs.writeFile(outPath, pngBuffer);
@@ -131,10 +131,10 @@ ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: st
 });
 
 // Return an existing thumbnail (output/<system>/<game>.png) as a data URL, or null if not present
-ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string }) => {
+ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string; root: string }) => {
   try {
-    const { system, game } = args;
-  const p = path.join(process.cwd(), 'output', system, 'Imgs', `${game}.png`);
+    const { system, game, root } = args;
+    const p = path.join(root, system, 'Imgs', `${game}.png`);
     try {
       const data = await fs.readFile(p);
       const base = data.toString('base64');
