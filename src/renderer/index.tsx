@@ -5,6 +5,9 @@ function App() {
   const [dragOver, setDragOver] = React.useState(false);
   const [imageSrc, setImageSrc] = React.useState<string | null>(null);
   const [savedPath, setSavedPath] = React.useState<string | null>(null);
+  const [romsRoot, setRomsRoot] = React.useState<string | null>(null);
+  const [romsList, setRomsList] = React.useState<Array<{ system: string; game: string }>>([]);
+  const [status, setStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     return () => {
@@ -54,20 +57,106 @@ function App() {
     }
   }
 
+  async function chooseRomsDirectory() {
+    try {
+      // @ts-ignore
+      const selected = await window.electronAPI.chooseRomsDirectory();
+      if (!selected) return;
+      console.log('chooseRomsDirectory selected', selected);
+      setRomsRoot(selected);
+      setStatus(`Selected root: ${selected}`);
+      // @ts-ignore
+      const list = await window.electronAPI.getRomsList(selected);
+      console.log('getRomsList returned', list?.length);
+      setRomsList(list || []);
+      const systemsCount = Array.from(new Set((list || []).map((l: any) => l.system))).length;
+      const gamesCount = (list || []).length;
+      setStatus(`Found ${gamesCount} games across ${systemsCount} systems`);
+    } catch (err) {
+      console.error('Failed to choose roms directory', err);
+      setStatus('Failed to choose directory');
+      alert('Failed to choose directory');
+    }
+  }
+
+  function makeDropHandlers(system: string, game: string) {
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        e.preventDefault();
+      },
+      onDrop: async (e: React.DragEvent) => {
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length === 0) return;
+        const file = files[0] as File;
+        if (!file.type.startsWith('image/')) {
+          alert('Please drop an image file');
+          return;
+        }
+        const url = URL.createObjectURL(file);
+        // show preview in the small drop zone by setting imageSrc (global preview for simplicity)
+        setImageSrc(url);
+
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          // @ts-ignore
+          const result = await window.electronAPI.saveImageForGame(system, game, arrayBuffer);
+          if (result && result.success) {
+            setSavedPath(result.path ?? null);
+            setStatus(`Saved ${system}/${game} -> ${result.path}`);
+            // update the list item if needed (not tracking per-item state for now)
+          } else {
+            console.error('Save failed', result?.error);
+            alert('Failed to save image: ' + (result?.error || 'unknown'));
+          }
+        } catch (err) {
+          console.error('Failed to send image to main process', err);
+          alert('Failed to process dropped image');
+        }
+      }
+    };
+  }
+
   return (
     <div id="app">
-      <div
-        className={'drop-area' + (dragOver ? ' dragover' : '')}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-      >
-        <div style={{ fontSize: 18, color: '#333' }}>
-          {imageSrc ? 'Drop another image to replace' : 'Drag an image from your desktop here'}
-        </div>
-        {imageSrc && <img src={imageSrc} alt="Dropped" />}
-        {savedPath && <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>Saved to: {savedPath}</div>}
+      <div style={{ marginBottom: 12 }}>
+        <button onClick={chooseRomsDirectory}>Choose ROMs directory</button>
+        {romsRoot && <span style={{ marginLeft: 12 }}>Root: {romsRoot}</span>}
+        {status && <div style={{ marginTop: 8, color: '#333', fontSize: 13 }}>{status}</div>}
       </div>
+
+      {romsList.length === 0 ? (
+        <div
+          className={'drop-area' + (dragOver ? ' dragover' : '')}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+        >
+          <div style={{ fontSize: 18, color: '#333' }}>
+            {imageSrc ? 'Drop another image to replace' : 'Drag an image from your desktop here'}
+          </div>
+          {imageSrc && <img src={imageSrc} alt="Dropped" />}
+          {savedPath && <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>Saved to: {savedPath}</div>}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+          {romsList.map((r) => (
+            <div key={`${r.system}/${r.game}`} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
+              <div style={{ fontSize: 12, color: '#666' }}>{r.system}</div>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
+              <div
+                className={'drop-area'}
+                onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
+                onDrop={makeDropHandlers(r.system, r.game).onDrop}
+                style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {savedPath && <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>Saved to: {savedPath}</div>}
     </div>
   );
 }
@@ -77,6 +166,9 @@ declare global {
   interface Window {
     electronAPI: {
       saveImage: (name: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
+      chooseRomsDirectory: () => Promise<string | null>;
+      getRomsList: (root: string) => Promise<Array<{ system: string; game: string }>>;
+      saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
     };
   }
 }
