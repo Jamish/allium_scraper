@@ -88,10 +88,8 @@ ipcMain.handle('get-roms-list', async (_, args: { root: string }) => {
       for (const g of games) {
         // Ignore hidden files like .DS_Store
         if (g.name.startsWith('.')) continue;
-        const full = path.join(systemPath, g.name);
-        if (g.isDirectory()) {
-          out.push({ system: systemName, game: g.name });
-        } else if (g.isFile()) {
+        if (g.isDirectory()) continue;
+        if (g.isFile()) {
           // Treat files inside the system folder as ROMs; use filename (no ext) as game name
           const ext = path.extname(g.name).toLowerCase();
           if (ext) {
