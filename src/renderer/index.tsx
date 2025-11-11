@@ -88,7 +88,7 @@ function App() {
           if (t) {
             const k = `${l.system}/${l.game}`;
             previews[k] = t as string;
-            savedPaths[k] = `output/${l.system}/${l.game}.png`;
+            savedPaths[k] = `output/${l.system}/Imgs/${l.game}.png`;
           }
         } catch (err) {
           // ignore per-item errors
@@ -150,7 +150,7 @@ function App() {
 
   function openGameSearch(game: string) {
     const q = encodeURIComponent(game);
-    const url = `https://gamesdb.launchbox-app.com/games/results/${q}`;
+    const url = `https://thegamesdb.net/search.php?name=${q}`;
     try {
       // @ts-ignore
       window.electronAPI.openExternal(url);

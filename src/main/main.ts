@@ -120,9 +120,9 @@ ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: st
       .png()
       .toBuffer();
 
-    const outputDir = path.join(process.cwd(), 'output', system);
-    await fs.mkdir(outputDir, { recursive: true });
-    const outPath = path.join(outputDir, `${game}.png`);
+  const outputDir = path.join(process.cwd(), 'output', system, 'Imgs');
+  await fs.mkdir(outputDir, { recursive: true });
+  const outPath = path.join(outputDir, `${game}.png`);
     await fs.writeFile(outPath, pngBuffer);
     console.log(`save-image-for-game: wrote ${outPath}`);
     return { success: true, path: outPath };
@@ -136,7 +136,7 @@ ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: st
 ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string }) => {
   try {
     const { system, game } = args;
-    const p = path.join(process.cwd(), 'output', system, `${game}.png`);
+  const p = path.join(process.cwd(), 'output', system, 'Imgs', `${game}.png`);
     try {
       const data = await fs.readFile(p);
       const base = data.toString('base64');
