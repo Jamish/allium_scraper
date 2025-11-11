@@ -3,19 +3,25 @@ import { createRoot } from 'react-dom/client';
 
 function App() {
   const [dragOver, setDragOver] = React.useState(false);
-  const [imageSrc, setImageSrc] = React.useState<string | null>(null);
   const [savedPath, setSavedPath] = React.useState<string | null>(null);
   const [romsRoot, setRomsRoot] = React.useState<string | null>(null);
   const [romsList, setRomsList] = React.useState<Array<{ system: string; game: string }>>([]);
+  const [romPreviews, setRomPreviews] = React.useState<Record<string, string>>({});
+  const [romSavedPaths, setRomSavedPaths] = React.useState<Record<string, string>>({});
+  const [imageSrc, setImageSrc] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<string | null>(null);
 
+  // Clean up any blob URLs created for previews when component unmounts
   React.useEffect(() => {
     return () => {
       if (imageSrc && imageSrc.startsWith('blob:')) {
         URL.revokeObjectURL(imageSrc);
       }
+      Object.values(romPreviews).forEach((u) => {
+        if (u && u.startsWith('blob:')) URL.revokeObjectURL(u);
+      });
     };
-  }, [imageSrc]);
+  }, [imageSrc, romPreviews]);
 
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();
@@ -94,8 +100,13 @@ function App() {
           return;
         }
         const url = URL.createObjectURL(file);
-        // show preview in the small drop zone by setting imageSrc (global preview for simplicity)
-        setImageSrc(url);
+        // set per-game preview and revoke any previous preview URL for this key
+        const key = `${system}/${game}`;
+        setRomPreviews((prev) => {
+          const prevUrl = prev[key];
+          if (prevUrl && prevUrl.startsWith('blob:')) URL.revokeObjectURL(prevUrl);
+          return { ...prev, [key]: url };
+        });
 
         try {
           const arrayBuffer = await file.arrayBuffer();
@@ -103,8 +114,9 @@ function App() {
           const result = await window.electronAPI.saveImageForGame(system, game, arrayBuffer);
           if (result && result.success) {
             setSavedPath(result.path ?? null);
+            setRomSavedPaths((prev) => ({ ...prev, [key]: result.path ?? '' }));
             setStatus(`Saved ${system}/${game} -> ${result.path}`);
-            // update the list item if needed (not tracking per-item state for now)
+            // update the list item state (preview is already set)
           } else {
             console.error('Save failed', result?.error);
             alert('Failed to save image: ' + (result?.error || 'unknown'));
@@ -140,20 +152,30 @@ function App() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-          {romsList.map((r) => (
-            <div key={`${r.system}/${r.game}`} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
-              <div style={{ fontSize: 12, color: '#666' }}>{r.system}</div>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
-              <div
-                className={'drop-area'}
-                onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
-                onDrop={makeDropHandlers(r.system, r.game).onDrop}
-                style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
+          {romsList.map((r) => {
+            const key = `${r.system}/${r.game}`;
+            const preview = romPreviews[key];
+            const saved = romSavedPaths[key];
+            return (
+              <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
+                <div style={{ fontSize: 12, color: '#666' }}>{r.system}</div>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
+                <div
+                  className={'drop-area'}
+                  onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
+                  onDrop={makeDropHandlers(r.system, r.game).onDrop}
+                  style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  {preview ? (
+                    <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
+                  )}
+                </div>
+                {saved && <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>Saved: {saved}</div>}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       {savedPath && <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>Saved to: {savedPath}</div>}
