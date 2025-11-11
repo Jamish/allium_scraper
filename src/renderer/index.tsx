@@ -159,6 +159,17 @@ function App() {
     }
   }
 
+  function openGoogleBoxartSearch(game: string) {
+    const q = encodeURIComponent(`${game} boxart`);
+    const url = `https://www.google.com/search?udm=2&q=${q}`;
+    try {
+      // @ts-ignore
+      window.electronAPI.openExternal(url);
+    } catch (err) {
+      console.error('Failed to open external URL', err);
+    }
+  }
+
   return (
     <div id="app">
       <div style={{ marginBottom: 12 }}>
@@ -204,6 +215,7 @@ function App() {
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
                   <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
+                    <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Google boxart</button>
                   {saved && <div style={{ fontSize: 12, color: '#666' }}>Saved: {saved}</div>}
                 </div>
               </div>
