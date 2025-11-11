@@ -77,7 +77,26 @@ function App() {
       setRomsList(list || []);
       const systemsCount = Array.from(new Set((list || []).map((l: any) => l.system))).length;
       const gamesCount = (list || []).length;
-      setStatus(`Found ${gamesCount} games across ${systemsCount} systems`);
+      // Load any existing thumbnails from output/<system>/<game>.png
+      setStatus('Loading existing thumbnails...');
+      const previews: Record<string, string> = {};
+      const savedPaths: Record<string, string> = {};
+      await Promise.all((list || []).map(async (l: any) => {
+        try {
+          // @ts-ignore
+          const t = await window.electronAPI.getThumbnail(l.system, l.game);
+          if (t) {
+            const k = `${l.system}/${l.game}`;
+            previews[k] = t as string;
+            savedPaths[k] = `output/${l.system}/${l.game}.png`;
+          }
+        } catch (err) {
+          // ignore per-item errors
+        }
+      }));
+      setRomPreviews(previews);
+      setRomSavedPaths(savedPaths);
+      setStatus(`Found ${gamesCount} games across ${systemsCount} systems — ${Object.keys(previews).length} existing thumbnails`);
     } catch (err) {
       console.error('Failed to choose roms directory', err);
       setStatus('Failed to choose directory');
@@ -191,6 +210,7 @@ declare global {
       chooseRomsDirectory: () => Promise<string | null>;
       getRomsList: (root: string) => Promise<Array<{ system: string; game: string }>>;
       saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
+      getThumbnail: (system: string, game: string) => Promise<string | null>;
     };
   }
 }

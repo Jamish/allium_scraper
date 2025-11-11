@@ -131,3 +131,22 @@ ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: st
     return { success: false, error: String(err) };
   }
 });
+
+// Return an existing thumbnail (output/<system>/<game>.png) as a data URL, or null if not present
+ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string }) => {
+  try {
+    const { system, game } = args;
+    const p = path.join(process.cwd(), 'output', system, `${game}.png`);
+    try {
+      const data = await fs.readFile(p);
+      const base = data.toString('base64');
+      return `data:image/png;base64,${base}`;
+    } catch (err: any) {
+      // File doesn't exist or can't be read
+      return null;
+    }
+  } catch (err: any) {
+    console.error('get-thumbnail error', err);
+    return null;
+  }
+});
