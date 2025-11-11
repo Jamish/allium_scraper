@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { promises as fs } from 'fs';
-import Jimp from 'jimp';
+import sharp from 'sharp';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -38,13 +38,14 @@ app.on('activate', () => {
 ipcMain.handle('save-image', async (_, args: { name: string; buffer: Uint8Array | ArrayBuffer }) => {
   try {
     const { name, buffer } = args;
-    // Convert whatever transferable was sent into a Node Buffer
+    // Convert transferable into a Node Buffer
     const inputBuffer = Buffer.from(buffer as any);
 
-    const image = await Jimp.read(inputBuffer);
-    // Resize while keeping aspect ratio, max 250x250
-    image.scaleToFit(250, 250);
-    const pngBuffer = await image.getBufferAsync(Jimp.MIME_PNG);
+    // Use sharp which supports webp and many other formats. Resize to fit within 250x250
+    const pngBuffer = await sharp(inputBuffer)
+      .resize({ width: 250, height: 250, fit: 'inside' })
+      .png()
+      .toBuffer();
 
     const outputDir = path.join(process.cwd(), 'output');
     await fs.mkdir(outputDir, { recursive: true });
