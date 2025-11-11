@@ -2,66 +2,21 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 
 function App() {
-  const [dragOver, setDragOver] = React.useState(false);
   const [savedPath, setSavedPath] = React.useState<string | null>(null);
   const [romsRoot, setRomsRoot] = React.useState<string | null>(null);
   const [romsList, setRomsList] = React.useState<Array<{ system: string; game: string }>>([]);
   const [romPreviews, setRomPreviews] = React.useState<Record<string, string>>({});
   const [romSavedPaths, setRomSavedPaths] = React.useState<Record<string, string>>({});
-  const [imageSrc, setImageSrc] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<string | null>(null);
 
   // Clean up any blob URLs created for previews when component unmounts
   React.useEffect(() => {
     return () => {
-      if (imageSrc && imageSrc.startsWith('blob:')) {
-        URL.revokeObjectURL(imageSrc);
-      }
       Object.values(romPreviews).forEach((u) => {
         if (u && u.startsWith('blob:')) URL.revokeObjectURL(u);
       });
     };
-  }, [imageSrc, romPreviews]);
-
-  function onDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(true);
-  }
-  function onDragLeave(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-  }
-  async function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length === 0) return;
-    const file = files[0] as File;
-    if (!file.type.startsWith('image/')) {
-      alert('Please drop an image file');
-      return;
-    }
-
-    // Display preview
-    const url = URL.createObjectURL(file);
-    setImageSrc(url);
-
-    // Read bytes and send to main process to resize + save
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      // @ts-ignore - electronAPI is injected via preload
-      const result = await window.electronAPI.saveImage(file.name, arrayBuffer);
-      if (result && result.success) {
-        setSavedPath(result.path ?? null);
-      } else {
-        console.error('Save failed', result?.error);
-        alert('Failed to save image: ' + (result?.error || 'unknown'));
-      }
-    } catch (err) {
-      console.error('Failed to send image to main process', err);
-      alert('Failed to process dropped image');
-    }
-  }
+  }, [romPreviews]);
 
   async function chooseRomsDirectory() {
     try {
@@ -178,52 +133,36 @@ function App() {
         {status && <div style={{ marginTop: 8, color: '#333', fontSize: 13 }}>{status}</div>}
       </div>
 
-      {romsList.length === 0 ? (
-        <div
-          className={'drop-area' + (dragOver ? ' dragover' : '')}
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-        >
-          <div style={{ fontSize: 18, color: '#333' }}>
-            {imageSrc ? 'Drop another image to replace' : 'Drag an image from your desktop here'}
-          </div>
-          {imageSrc && <img src={imageSrc} alt="Dropped" />}
-          {savedPath && <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>Saved to: {savedPath}</div>}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-          {romsList.map((r) => {
-            const key = `${r.system}/${r.game}`;
-            const preview = romPreviews[key];
-            const saved = romSavedPaths[key];
-            return (
-              <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
-                <div style={{ fontSize: 12, color: '#666' }}>{r.system}</div>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
-                <div
-                  className={'drop-area'}
-                  onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
-                  onDrop={makeDropHandlers(r.system, r.game).onDrop}
-                  style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  {preview ? (
-                    <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
-                  ) : (
-                    <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
-                  <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
-                    <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Google boxart</button>
-                  {saved && <div style={{ fontSize: 12, color: '#666' }}>Saved: {saved}</div>}
-                </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+        {romsList.map((r) => {
+          const key = `${r.system}/${r.game}`;
+          const preview = romPreviews[key];
+          const saved = romSavedPaths[key];
+          return (
+            <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
+              <div style={{ fontSize: 12, color: '#666' }}>{r.system}</div>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
+              <div
+                className={'drop-area'}
+                onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
+                onDrop={makeDropHandlers(r.system, r.game).onDrop}
+                style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {preview ? (
+                  <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
+                ) : (
+                  <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
+                )}
               </div>
-            );
-          })}
-        </div>
-      )}
-      {savedPath && <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>Saved to: {savedPath}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
+                  <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Google boxart</button>
+                {saved && <div style={{ fontSize: 12, color: '#666' }}>Saved: {saved}</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
