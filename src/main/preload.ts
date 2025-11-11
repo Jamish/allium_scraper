@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	// Save image buffer as output/<system>/<game>.png
 	saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => ipcRenderer.invoke('save-image-for-game', { system, game, buffer })
 	,getThumbnail: (system: string, game: string) => ipcRenderer.invoke('get-thumbnail', { system, game })
+	,openExternal: (url: string) => ipcRenderer.invoke('open-external', { url })
 });
 
 export {};

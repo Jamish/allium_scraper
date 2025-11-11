@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import { promises as fs } from 'fs';
 import sharp from 'sharp';
@@ -148,5 +148,17 @@ ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string }
   } catch (err: any) {
     console.error('get-thumbnail error', err);
     return null;
+  }
+});
+
+// Open a URL in the default OS browser
+ipcMain.handle('open-external', async (_, args: { url: string }) => {
+  try {
+    const { url } = args;
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (err: any) {
+    console.error('open-external error', err);
+    return { success: false, error: String(err) };
   }
 });
