@@ -155,7 +155,8 @@ function App() {
             map[sys].push(r);
           }
           const systems = Object.keys(map).sort();
-          const tabs = ['All', ...systems];
+          // Only show the "All" tab when there is at least one system
+          const tabs = systems.length > 0 ? ['All', ...systems] : systems;
           const visibleSystems = activeFilter === 'All' ? systems : systems.filter((s) => s === activeFilter);
 
           return (
