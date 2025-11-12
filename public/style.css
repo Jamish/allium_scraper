@@ -4,3 +4,20 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neu
 .drop-area { border: 2px dashed #aaa; border-radius: 8px; padding: 40px; text-align:center; background:#fff; }
 .drop-area.dragover { border-color: #007acc; box-shadow: 0 0 0 4px rgba(0,122,204,0.08); }
 .drop-area img { max-width: 100%; height: auto; display:block; margin: 16px auto 0; }
+
+/* Tabs for filtering systems */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tab {
+	background: transparent;
+	border: 1px solid transparent;
+	padding: 6px 10px;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 13px;
+}
+.tab:hover { background: rgba(0,0,0,0.03); }
+.tab.active {
+	background: #007acc;
+	color: white;
+	border-color: rgba(0,0,0,0.08);
+}

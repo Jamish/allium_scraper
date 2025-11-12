@@ -8,6 +8,7 @@ function App() {
   const [romPreviews, setRomPreviews] = React.useState<Record<string, string>>({});
   const [romSavedPaths, setRomSavedPaths] = React.useState<Record<string, string>>({});
   const [status, setStatus] = React.useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = React.useState<string>('All');
 
   // Clean up any blob URLs created for previews when component unmounts
   React.useEffect(() => {
@@ -144,7 +145,7 @@ function App() {
         {status && <div style={{ marginTop: 8, color: '#333', fontSize: 13 }}>{status}</div>}
       </div>
 
-      {/* Group games by system and render a header + grid per system */}
+      {/* Group games by system and render a header + grid per system (with filter tabs) */}
       <div>
         {(() => {
           const map: Record<string, Array<{ system: string; game: string }>> = {};
@@ -154,40 +155,60 @@ function App() {
             map[sys].push(r);
           }
           const systems = Object.keys(map).sort();
-          return systems.map((system) => (
-            <div key={system} style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 18, fontWeight: 700, margin: '8px 0' }}>{system}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-                {map[system].map((r) => {
-                  const key = `${r.system}/${r.game}`;
-                  const preview = romPreviews[key];
-                  const saved = romSavedPaths[key];
-                  return (
-                    <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
-                      <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
-                      <div
-                        className={'drop-area'}
-                        onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
-                        onDrop={makeDropHandlers(r.system, r.game).onDrop}
-                        style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        {preview ? (
-                          <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
-                        ) : (
-                          <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
-                        <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
-                        <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Search Google</button>
-                        <button onClick={() => openLaunchBoxSearch(r.game)} style={{ fontSize: 12 }}>Search LaunchBox</button>
-                      </div>
-                    </div>
-                  );
-                })}
+          const tabs = ['All', ...systems];
+          const visibleSystems = activeFilter === 'All' ? systems : systems.filter((s) => s === activeFilter);
+
+          return (
+            <div>
+              <div className="tabs" style={{ marginBottom: 12 }}>
+                {tabs.map((t) => (
+                  <button
+                    key={t}
+                    className={`tab ${activeFilter === t ? 'active' : ''}`}
+                    onClick={() => setActiveFilter(t)}
+                    style={{ marginRight: 8 }}
+                  >
+                    {t}
+                  </button>
+                ))}
               </div>
+
+              {visibleSystems.map((system) => (
+                <div key={system} style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, margin: '8px 0' }}>{system}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+                    {map[system].map((r) => {
+                      const key = `${r.system}/${r.game}`;
+                      const preview = romPreviews[key];
+                      const saved = romSavedPaths[key];
+                      return (
+                        <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
+                          <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
+                          <div
+                            className={'drop-area'}
+                            onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
+                            onDrop={makeDropHandlers(r.system, r.game).onDrop}
+                            style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            {preview ? (
+                              <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
+                            ) : (
+                              <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                            <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
+                            <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Search Google</button>
+                            <button onClick={() => openLaunchBoxSearch(r.game)} style={{ fontSize: 12 }}>Search LaunchBox</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
-          ));
+          );
         })()}
       </div>
     </div>
