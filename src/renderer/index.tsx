@@ -125,6 +125,17 @@ function App() {
     }
   }
 
+  function openLaunchBoxSearch(game: string) {
+    const q = encodeURIComponent(game);
+    const url = `https://gamesdb.launchbox-app.com/games/results/${q}`;
+    try {
+      // @ts-ignore
+      window.electronAPI.openExternal(url);
+    } catch (err) {
+      console.error('Failed to open external URL', err);
+    }
+  }
+
   return (
     <div id="app">
       <div style={{ marginBottom: 12 }}>
@@ -133,35 +144,51 @@ function App() {
         {status && <div style={{ marginTop: 8, color: '#333', fontSize: 13 }}>{status}</div>}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-        {romsList.map((r) => {
-          const key = `${r.system}/${r.game}`;
-          const preview = romPreviews[key];
-          const saved = romSavedPaths[key];
-          return (
-            <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
-              <div style={{ fontSize: 12, color: '#666' }}>{r.system}</div>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
-              <div
-                className={'drop-area'}
-                onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
-                onDrop={makeDropHandlers(r.system, r.game).onDrop}
-                style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                {preview ? (
-                  <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
-                ) : (
-                  <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
-                <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
-                  <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Google boxart</button>
-                {saved && <div style={{ fontSize: 12, color: '#666' }}>Saved: {saved}</div>}
+      {/* Group games by system and render a header + grid per system */}
+      <div>
+        {(() => {
+          const map: Record<string, Array<{ system: string; game: string }>> = {};
+          for (const r of romsList) {
+            const sys = r.system || 'Unknown';
+            if (!map[sys]) map[sys] = [];
+            map[sys].push(r);
+          }
+          const systems = Object.keys(map).sort();
+          return systems.map((system) => (
+            <div key={system} style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, margin: '8px 0' }}>{system}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+                {map[system].map((r) => {
+                  const key = `${r.system}/${r.game}`;
+                  const preview = romPreviews[key];
+                  const saved = romSavedPaths[key];
+                  return (
+                    <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
+                      <div
+                        className={'drop-area'}
+                        onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
+                        onDrop={makeDropHandlers(r.system, r.game).onDrop}
+                        style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        {preview ? (
+                          <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
+                        ) : (
+                          <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                        <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
+                        <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Search Google</button>
+                        <button onClick={() => openLaunchBoxSearch(r.game)} style={{ fontSize: 12 }}>Search LaunchBox</button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          );
-        })}
+          ));
+        })()}
       </div>
     </div>
   );
@@ -175,8 +202,8 @@ declare global {
       chooseRomsDirectory: () => Promise<string | null>;
       getRomsList: (root: string) => Promise<Array<{ system: string; game: string }>>;
       saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
-  getThumbnail: (system: string, game: string, root?: string) => Promise<string | null>;
-  openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+      getThumbnail: (system: string, game: string, root?: string) => Promise<string | null>;
+      openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }
