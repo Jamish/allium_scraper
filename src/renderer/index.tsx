@@ -9,6 +9,7 @@ function App() {
   const [romSavedPaths, setRomSavedPaths] = React.useState<Record<string, string>>({});
   const [status, setStatus] = React.useState<string | null>(null);
   const [activeFilter, setActiveFilter] = React.useState<string>('All');
+  const [showMissingThumbnails, setShowMissingThumbnails] = React.useState<boolean>(false);
 
   // Clean up any blob URLs created for previews when component unmounts
   React.useEffect(() => {
@@ -161,7 +162,8 @@ function App() {
 
           return (
             <div>
-              <div className="tabs" style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div className="tabs">
                 {tabs.map((t) => (
                   <button
                     key={t}
@@ -172,42 +174,65 @@ function App() {
                     {t}
                   </button>
                 ))}
+                </div>
+
+                {romsRoot ? (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={showMissingThumbnails}
+                      onChange={(e) => setShowMissingThumbnails(e.target.checked)}
+                    />
+                    <span style={{ fontSize: 13 }}>Show Missing Thumbnails</span>
+                  </label>
+                ) : null}
               </div>
 
-              {visibleSystems.map((system) => (
-                <div key={system} style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, margin: '8px 0' }}>{system}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-                    {map[system].map((r) => {
-                      const key = `${r.system}/${r.game}`;
-                      const preview = romPreviews[key];
-                      const saved = romSavedPaths[key];
-                      return (
-                        <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
-                          <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
-                          <div
-                            className={'drop-area'}
-                            onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
-                            onDrop={makeDropHandlers(r.system, r.game).onDrop}
-                            style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            {preview ? (
-                              <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
-                            ) : (
-                              <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
-                            )}
+              {visibleSystems.map((system) => {
+                // apply the "missing thumbnail" filter per-system
+                const visibleGames = map[system].filter((r) => {
+                  const key = `${r.system}/${r.game}`;
+                  const hasPreview = !!romPreviews[key];
+                  return showMissingThumbnails ? !hasPreview : true;
+                });
+
+                if (visibleGames.length === 0) return null;
+
+                return (
+                  <div key={system} style={{ marginBottom: 18 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, margin: '8px 0' }}>{system}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+                      {visibleGames.map((r) => {
+                        const key = `${r.system}/${r.game}`;
+                        const preview = romPreviews[key];
+                        const saved = romSavedPaths[key];
+                        return (
+                          <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
+                            <div
+                              className={'drop-area'}
+                              onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
+                              onDrop={makeDropHandlers(r.system, r.game).onDrop}
+                              style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              {preview ? (
+                                <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
+                              ) : (
+                                <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                              <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
+                              <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Search Google</button>
+                              <button onClick={() => openLaunchBoxSearch(r.game)} style={{ fontSize: 12 }}>Search LaunchBox</button>
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
-                            <button onClick={() => openGameSearch(r.game)} style={{ fontSize: 12 }}>Search GamesDB</button>
-                            <button onClick={() => openGoogleBoxartSearch(r.game)} style={{ fontSize: 12 }}>Search Google</button>
-                            <button onClick={() => openLaunchBoxSearch(r.game)} style={{ fontSize: 12 }}>Search LaunchBox</button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           );
         })()}
