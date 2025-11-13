@@ -21,3 +21,12 @@ Notes:
 - The main process is compiled with `tsc` to `dist/main.js`.
 
 If you'd like, I can run `npm install` and `npm start` here to smoke-test it (this requires network access). Just tell me to proceed.
+
+## Exporting
+npx electron-packager . AlliumScraper \
+  --platform=darwin \
+  --arch=arm64 \
+  --out=release \
+  --overwrite \
+  --app-bundle-id=sh.jami.allium_scraper \
+  --prune=true

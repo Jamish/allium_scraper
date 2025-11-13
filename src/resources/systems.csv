@@ -1,0 +1,86 @@
+ System Name | Folder Name | File Extension | Cores |
+Amstrad CPC | CPC | sna, kcr | crocods |
+Arcade | ARCADE | *(none)* | mame2003_plus, fbneo, fbalpha2012, fbalpha2012_cps1, fbalpha2012_cps2, fbalpha2012_cps3, km_mame2003_xtreme, mame2003_midway, mame2003, mame2000, mba_mini |
+Atari - 800 | EIGHTHUNDRED | xex | atari800 |
+Atari 2600 | ATARI | a26 | stella2014 |
+Atari 5200 | FIFTYTWOHUNDRED | a52 | a5200 |
+Atari 7800 | SEVENTYEIGHTHUNDRED | a78 | prosystem |
+Atari Jaguar | JAGUAR | j64, jag | virtualjaguar |
+Atari Lynx | LYNX | lnx | handy, mednafen_lynx |
+Atari ST | ATARIST | *(none)* | hatari |
+Sufami Turbo | SUFAMI | *(none)* | snes9x |
+WonderSwanColor | WS | ws, pc2 | mednafen_wswan |
+CPS1 | CPS1 | *(none)* | fbalpha2012_cps1, mame2003_plus, fbneo, fbalpha2012, fbalpha2012_cps1, km_mame2003_xtreme, mame2003_midway, mame2003, mame2000, mba_mini |
+CPS2 | CPS2 | *(none)* | fbalpha2012_cps2, mame2003_plus, fbneo, fbalpha2012, fbalpha2012_cps2, km_mame2003_xtreme, mame2003_midway, mame2003, mame2000, mba_mini |
+CPS3 | CPS3 | *(none)* | fbalpha2012_cps3, mame2003_plus, fbneo, fbalpha2012, fbalpha2012_cps3, km_mame2003_xtreme, mame2003_midway, mame2003, mame2000, mba_mini |
+ColecoVision | COLECO | ri, col, sc | bluemsx |
+Amiga | AMIGA | adf, adz, dms, fdi, ipf, hdf, hdz, lha, slave, info, nrg, mds, uae, rp9 | puae2021, puae, uae4arm |
+Commodore 64 | COMMODORE | *(none)* | vice_x64 |
+VIC-20 | VIC20 | *(none)* | vice_xvic |
+Fairchild ChannelF | FAIRCHILD | chf | freechaf |
+Vectrex | VECTREX | vec | vecx |
+Odyssey 2 | ODYSSEY | *(none)* | o2em |
+Intellivision | INTELLIVISION | int | freeintv |
+Mega Duck | MEGADUCK | *(none)* | sameduck |
+MS-DOS | DOS | dosz, exe, com, bat, ins, ima, vhd, jrc, tc, m3u8, conf | dosbox_pure, dosbox_pure_0.9.7 |
+MSX | MSX | mx1, mx2 | bluemsx, fmsx |
+SuperGrafx | SGFX | sgx | mednafen_supergrafx |
+TurboGrafx CD | PCECD | *(none)* | mednafen_pce_fast |
+TurboGrafx-16 | PCE | pce | mednafen_pce_fast |
+Famicom Disk Syst. | FDS | fds | fceumm |
+Game Tank | GAMETANK | gtr| libgametank |
+Game & Watch | GW | mgw | gw |
+Game Boy | GB, TGB_Dual | gb | gambatte, tgbdual, gearboy, mgba, vbam, vba_next |
+Game Boy Color | GBC, SGB | gbc | gambatte, tgbdual, gearboy, mgba, vbam, vba_next |
+Game Boy Advance | GBA | gba | gpsp, mgba, vbam, vba_next |
+Super Game Boy | SGB | *(none)* | mgba, tgbdual, gearboy, bsnes |
+NES | FC, NES | nes, unif, unf | fceumm, nestopia |
+Pokémon Mini | POKE, PKM | min | pokemini |
+Satellaview | SATELLAVIEW | st | snes9x |
+SNES | SFC, SNES | sfc, smc, swc, fig | mednafen_supafaust, snes9x, snes9x2010, snes9x2005, snes9x2005_plus, snes9x2002, chimerasnes |
+Virtual Boy | VB | vb, vboy | mednafen_vb |
+Phillips Videopac+ | VIDEOPAC | *(none)* | o2em |
+PICO-8 | PICO | p8, png | fake08, retro8 |
+Ports Collection | PORTS, SH, NATIVE | port | native |
+ScummVM | SCUMMVM | scummvm, target | scummvm |
+Genesis 32X | THIRTYTWOX | 32x | picodrive |
+Sega CD | SEGACD | *(none)* | picodrive, genesis_plus_gx |
+Game Gear | GG | gg | picodrive, genesis_plus_gx |
+Genesis | MD | gen, smd, md | picodrive, genesis_plus_gx |
+Master System | MS | sms | picodrive, genesis_plus_gx |
+SG-1000 | SEGASGONE | sg | gearsystem |
+Sega VMU | VMU | *(none)* | vemulator |
+ZX Spectrum | ZXS | tzx, z80, rzx, scl, trd | fuse |
+Neo Geo | NEOGEO | *(none)* | fbalpha2012_neogeo |
+Neo Geo CD | NEOCD | *(none)* | neocd |
+Neo Geo Pocket Color | NGP, NGC | ngp, ngc | mednafen_ngp |
+PlayStation | PSX, PS, PS1 | mdf, pbp, toc, cbn | pcsx_rearmed |
+TIC-80 | TIC | tic, fd, sap, k7, m7 | tic80 |
+Watara Supervision | SUPERVISION | sv | potator |
+PC-8000 | PC8000 | *(none)* | quasi88 |
+PC-98 | PC98, PCNINETYEIGHT, NINETYEIGHT | *(none)* | np2kai, nekop2 |
+PC-FX | PCFX | *(none)* | mednafen_pcfx |
+Cave Story | NXENGINE | Doukutsu.exe | nxengine |
+SH Launcher | *(none)* | sh | sh_launcher |
+Sinclair ZX81 | ZX81, ZXEIGHTYONE | *(none)* | zx81 |
+ChaiLove | CHAILOVE | *(none)* | chailove |
+Daphne | DAPHNE | daphne | daphne |
+EasyRPG | EASYRPG | *(none)* | easyrpg |
+Wolfenstein 3D | ECWOLF | *(none)* | ecwolf |
+Game Music Emu | GME | *(none)* | gme |
+LÖVE | LOVE | love | lutro |
+Palm OS | PALMOS | prc, pqa | mu |
+Texas Instruments TI-83 | TI83 | *(none)* | numero |
+3DO | PANASONIC, 3DO | *(none)* | opera |
+Doom | DOOM, PRBOOM | wad, iwad, pwad | prboom |
+Sharp X1 | SHARPX1 | *(none)* | x1 |
+Sharp X68000 | X68000 | *(none)* | px68k |
+Flashback | FLASHBACK | *(none)* | reminiscence |
+Thomson | THOMSON | *(none)* | theodore |
+Quake | QUAKE | *(none)* | tyrquake |
+MicroW8 | MICROW8 | *(none)* | uw8 |
+Uzebox | UZEBOX | *(none)* | uzem |
+GCE Vectrex | VECRTEX | *(none)* | vecx |
+Rick Dangerous | XRICK | *(none)* | xrick |
+Nintendo DS | NDS, DS | nds | drastic |
+Movies | MEDIA, Movies | 3g2, 3gp, aac, avi, flv, m4a, mkv, mj2, mov, mp3, mp4, mpeg, ogg, oss, wav, webm | *(none)* |

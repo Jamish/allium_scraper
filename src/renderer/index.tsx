@@ -18,6 +18,9 @@ function App() {
   const dragCountersRef = React.useRef<Record<string, number>>({});
   const [uploadedKey, setUploadedKey] = React.useState<string | null>(null);
   const uploadedTimerRef = React.useRef<number | null>(null);
+  const [systemsDefs, setSystemsDefs] = React.useState<Array<{ systemName: string; folderNames: string[]; extensions: string[] }>>([]);
+  const [showAddSystem, setShowAddSystem] = React.useState<boolean>(false);
+  const [selectedNewSystemFolder, setSelectedNewSystemFolder] = React.useState<string | null>(null);
 
   function fuzzyMatch(text: string, pattern: string) {
     // sequential fuzzy match: ensure all characters in `pattern` appear in `text` in order
@@ -80,6 +83,16 @@ function App() {
       setRomPreviews(previews);
       setRomSavedPaths(savedPaths);
       setStatus(`Found ${gamesCount} games across ${systemsCount} systems — ${Object.keys(previews).length} existing thumbnails`);
+      // fetch system definitions (csv)
+      try {
+        // @ts-ignore
+        const defs = await window.electronAPI.getSystemsDefs();
+        if (defs && defs.success) {
+          setSystemsDefs(defs.items || []);
+        }
+      } catch (err) {
+        // ignore
+      }
     } catch (err) {
       console.error('Failed to choose roms directory', err);
       setStatus('Failed to choose directory');
@@ -353,6 +366,50 @@ function App() {
                     />
                     <span style={{ fontSize: 13 }}>Show Missing Thumbnails</span>
                   </label>
+                ) : null}
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <button onClick={() => setShowAddSystem((s) => !s)} disabled={!romsRoot} style={{ padding: '6px 10px' }}>
+                  Add System
+                </button>
+                {showAddSystem && romsRoot ? (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <select
+                      value={selectedNewSystemFolder ?? ''}
+                      onChange={(e) => setSelectedNewSystemFolder(e.target.value || null)}
+                    >
+                      <option value="">-- choose system --</option>
+                      {systemsDefs.flatMap((d) => d.folderNames.map((f) => ({ display: `${d.systemName} (${f})`, folder: f }))).filter((o) => !systemsList.includes(o.folder)).map((o) => (
+                        <option key={o.folder} value={o.folder}>{o.display}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={async () => {
+                        if (!selectedNewSystemFolder || !romsRoot) return;
+                        try {
+                          // @ts-ignore
+                          const res = await window.electronAPI.createSystemDir(selectedNewSystemFolder, romsRoot);
+                          if (res && res.success) {
+                            // refresh systems list locally
+                            setSystemsList((prev) => {
+                              if (prev.includes(selectedNewSystemFolder)) return prev;
+                              return [...prev, selectedNewSystemFolder];
+                            });
+                            setShowAddSystem(false);
+                            setSelectedNewSystemFolder(null);
+                            showToast(`Created system folder ${selectedNewSystemFolder}`);
+                          } else {
+                            alert('Failed to create folder: ' + (res?.error || 'unknown'));
+                          }
+                        } catch (err) {
+                          console.error('create system dir error', err);
+                          alert('Failed to create folder');
+                        }
+                      }}
+                    >Create</button>
+                    <button onClick={() => { setShowAddSystem(false); setSelectedNewSystemFolder(null); }}>Cancel</button>
+                  </div>
                 ) : null}
               </div>
 

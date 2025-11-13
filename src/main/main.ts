@@ -47,6 +47,75 @@ ipcMain.handle('choose-roms-dir', async () => {
   }
 });
 
+// Return parsed systems definitions from src/resources/systems.csv
+ipcMain.handle('get-systems-defs', async () => {
+  try {
+    // try several plausible locations for the CSV in dev and packaged app
+    const candidates = [
+      path.join(__dirname, '..', 'src', 'resources', 'systems.csv'),
+      path.join(__dirname, '..', 'resources', 'systems.csv'),
+      path.join(process.cwd(), 'src', 'resources', 'systems.csv')
+    ];
+    let csvPath: string | null = null;
+    for (const c of candidates) {
+      try {
+        await fs.access(c);
+        csvPath = c;
+        break;
+      } catch (_) {
+        // continue
+      }
+    }
+    if (!csvPath) {
+      console.error('systems.csv not found in expected locations', candidates);
+      return { success: false, items: [] };
+    }
+    const raw = (await fs.readFile(csvPath)).toString('utf8');
+    const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    // header first line may contain column names
+    const items: Array<{ systemName: string; folderNames: string[]; extensions: string[] }> = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split('|').map((c) => c.trim());
+      if (cols.length < 2) continue;
+      const systemName = cols[0];
+      const folderRaw = cols[1] || '';
+      const folderNames = folderRaw.split(',').map((s) => s.trim()).filter((s) => s.length > 0 && s.toLowerCase() !== '*(none)*' && s.toLowerCase() !== '(none)');
+      const extsRaw = cols[2] || '';
+      const extensions = extsRaw.split(',').map((s) => s.trim()).filter((s) => s.length > 0 && s.toLowerCase() !== '*(none)*' && s.toLowerCase() !== '(none)');
+      if (folderNames.length === 0) {
+        // still include the system but with empty folderNames
+        items.push({ systemName, folderNames: [], extensions });
+      } else {
+        items.push({ systemName, folderNames, extensions });
+      }
+    }
+    return { success: true, items };
+  } catch (err: any) {
+    console.error('get-systems-defs error', err);
+    return { success: false, items: [] };
+  }
+});
+
+// Create an empty system directory under the roms root
+ipcMain.handle('create-system-dir', async (_, args: { system: string; root: string }) => {
+  try {
+    const { system, root } = args;
+    if (!root) return { success: false, error: 'No root provided' };
+    const p = path.join(root, system);
+    try {
+      await fs.mkdir(p, { recursive: true });
+      console.log(`create-system-dir: created ${p}`);
+      return { success: true, path: p };
+    } catch (err: any) {
+      console.error('create-system-dir: mkdir failed', err);
+      return { success: false, error: String(err) };
+    }
+  } catch (err: any) {
+    console.error('create-system-dir error', err);
+    return { success: false, error: String(err) };
+  }
+});
+
 // Given a roms root, return list of { system, game } where layout is <root>/<system>/<game>
 ipcMain.handle('get-roms-list', async (_, args: { root: string }) => {
   try {

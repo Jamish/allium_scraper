@@ -10,7 +10,7 @@ dist/
 build/
 out/
 output/
-
+release/
 # Logs
 *.log
 
