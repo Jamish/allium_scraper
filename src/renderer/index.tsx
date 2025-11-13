@@ -368,8 +368,6 @@ function App() {
                   return true;
                 });
 
-                if (visibleGames.length === 0) return null;
-
                 return (
                   <div key={system} style={{ marginBottom: 18 }}>
                     <div
@@ -395,7 +393,9 @@ function App() {
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-                      {visibleGames.map((r) => {
+                      {visibleGames.length === 0 ? (
+                        <div style={{ border: '1px dashed #ddd', padding: 12, borderRadius: 6, color: '#666' }}>No games found in this system</div>
+                      ) : visibleGames.map((r) => {
                         const key = `${r.system}/${r.game}`;
                         const preview = romPreviews[key];
                         const saved = romSavedPaths[key];
