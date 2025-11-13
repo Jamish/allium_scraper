@@ -53,9 +53,11 @@ ipcMain.handle('get-roms-list', async (_, args: { root: string }) => {
     const root = args.root;
     const systems = await fs.readdir(root, { withFileTypes: true });
     const out: Array<{ system: string; game: string }> = [];
+    const systemNames: string[] = [];
     for (const s of systems) {
       if (!s.isDirectory()) continue;
       const systemName = s.name;
+      systemNames.push(systemName);
       const systemPath = path.join(root, systemName);
       const games = await fs.readdir(systemPath, { withFileTypes: true });
       for (const g of games) {
@@ -72,12 +74,13 @@ ipcMain.handle('get-roms-list', async (_, args: { root: string }) => {
         }
       }
     }
-    const systemsCount = systems.filter(s => s.isDirectory()).length;
+    const systemsCount = systemNames.length;
     console.log(`get-roms-list: root=${root} systems=${systemsCount} games=${out.length}`);
-    return out;
+    // Return both the list of system names and the discovered games so the UI can show empty systems
+    return { systems: systemNames, games: out };
   } catch (err: any) {
     console.error('Failed to scan roms list', err);
-    return [];
+    return { systems: [], games: [] };
   }
 });
 

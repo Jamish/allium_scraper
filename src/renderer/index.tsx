@@ -5,6 +5,7 @@ function App() {
   const [savedPath, setSavedPath] = React.useState<string | null>(null);
   const [romsRoot, setRomsRoot] = React.useState<string | null>(null);
   const [romsList, setRomsList] = React.useState<Array<{ system: string; game: string }>>([]);
+  const [systemsList, setSystemsList] = React.useState<string[]>([]);
   const [romPreviews, setRomPreviews] = React.useState<Record<string, string>>({});
   const [romSavedPaths, setRomSavedPaths] = React.useState<Record<string, string>>({});
   const [status, setStatus] = React.useState<string | null>(null);
@@ -44,16 +45,20 @@ function App() {
       setRomsRoot(selected);
       setStatus(`Selected root: ${selected}`);
       // @ts-ignore
-      const list = await window.electronAPI.getRomsList(selected);
-      console.log('getRomsList returned', list?.length);
-      setRomsList(list || []);
-      const systemsCount = Array.from(new Set((list || []).map((l: any) => l.system))).length;
-      const gamesCount = (list || []).length;
+      const res = await window.electronAPI.getRomsList(selected);
+      // res should now be { systems: string[], games: Array<{system, game}> }
+      console.log('getRomsList returned', res?.games?.length ?? 0);
+      const gamesList = (res && res.games) ? res.games : [];
+      const systems = (res && res.systems) ? res.systems : Array.from(new Set(gamesList.map((l: any) => l.system)));
+      setRomsList(gamesList || []);
+      setSystemsList(systems || []);
+      const systemsCount = systems.length;
+      const gamesCount = gamesList.length;
       // Load any existing thumbnails from output/<system>/<game>.png
       setStatus('Loading existing thumbnails...');
       const previews: Record<string, string> = {};
       const savedPaths: Record<string, string> = {};
-      await Promise.all((list || []).map(async (l: any) => {
+      await Promise.all((gamesList || []).map(async (l: any) => {
         try {
           // @ts-ignore
           const t = await window.electronAPI.getThumbnail(l.system, l.game, selected);
@@ -169,6 +174,10 @@ function App() {
             const sys = r.system || 'Unknown';
             if (!map[sys]) map[sys] = [];
             map[sys].push(r);
+          }
+          // Ensure systems that exist on disk but have no games are included
+          for (const s of systemsList) {
+            if (!map[s]) map[s] = [];
           }
           const systems = Object.keys(map).sort();
           // Only show the "All" tab when there is at least one system
@@ -295,7 +304,7 @@ declare global {
     electronAPI: {
       saveImage: (name: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
       chooseRomsDirectory: () => Promise<string | null>;
-      getRomsList: (root: string) => Promise<Array<{ system: string; game: string }>>;
+  getRomsList: (root: string) => Promise<{ systems: string[]; games: Array<{ system: string; game: string }> }>;
       saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
       getThumbnail: (system: string, game: string, root?: string) => Promise<string | null>;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
