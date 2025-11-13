@@ -106,6 +106,23 @@ ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: st
   }
 });
 
+// Save an uploaded ROM into <root>/<system>/<filename>
+ipcMain.handle('save-rom-for-system', async (_, args: { system: string; filename: string; buffer: Uint8Array | ArrayBuffer; root: string }) => {
+  try {
+    const { system, filename, buffer, root } = args;
+    const outDir = path.join(root, system);
+    await fs.mkdir(outDir, { recursive: true });
+    const outPath = path.join(outDir, filename);
+    const data = Buffer.from(buffer as any);
+    await fs.writeFile(outPath, data);
+    console.log(`save-rom-for-system: wrote ${outPath}`);
+    return { success: true, path: outPath };
+  } catch (err: any) {
+    console.error('Failed to save ROM for system:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
 // Return an existing thumbnail (output/<system>/<game>.png) as a data URL, or null if not present
 ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string; root: string }) => {
   try {

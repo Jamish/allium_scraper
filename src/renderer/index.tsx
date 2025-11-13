@@ -136,6 +136,69 @@ function App() {
     }
   }
 
+  function makeSystemDropHandlers(system: string) {
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        e.preventDefault();
+      },
+      onDrop: async (e: React.DragEvent) => {
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length === 0) return;
+        const file = files[0] as File;
+
+        // sanitize filename: strip content inside (), [], {}
+        const sanitize = (name: string) => {
+          const lastDot = name.lastIndexOf('.');
+          const ext = lastDot >= 0 ? name.slice(lastDot) : '';
+          let base = lastDot >= 0 ? name.slice(0, lastDot) : name;
+          // remove bracketed content
+          base = base.replace(/\[[^\]]*\]|\([^\)]*\)|\{[^\}]*\}/g, '');
+          base = base.replace(/\s+/g, ' ').trim();
+          return base + ext;
+        };
+
+        const sanitizedFilename = sanitize(file.name);
+        // compute game name used in UI (base without extension)
+        const lastDot = sanitizedFilename.lastIndexOf('.');
+        const gameName = lastDot >= 0 ? sanitizedFilename.slice(0, lastDot) : sanitizedFilename;
+
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          // @ts-ignore
+          const result = await window.electronAPI.saveRomForSystem(system, sanitizedFilename, arrayBuffer, romsRoot ?? undefined);
+          if (result && result.success) {
+            setStatus(`Saved ROM ${sanitizedFilename} -> ${result.path}`);
+            // add to romsList so it appears in UI
+            setRomsList((prev) => {
+              // avoid duplicates
+              const exists = prev.some((p) => p.system === system && p.game === gameName);
+              if (exists) return prev;
+              return [...prev, { system, game: gameName }];
+            });
+            // try to load an existing thumbnail for it (if already present)
+            try {
+              // @ts-ignore
+              const t = await window.electronAPI.getThumbnail(system, gameName, romsRoot ?? undefined);
+              if (t) {
+                const key = `${system}/${gameName}`;
+                setRomPreviews((prev) => ({ ...prev, [key]: t as string }));
+              }
+            } catch (err) {
+              // ignore
+            }
+          } else {
+            console.error('Save ROM failed', result?.error);
+            alert('Failed to save ROM: ' + (result?.error || 'unknown'));
+          }
+        } catch (err) {
+          console.error('Failed to save dropped ROM', err);
+          alert('Failed to process dropped ROM');
+        }
+      }
+    };
+  }
+
   function openGoogleBoxartSearch(game: string) {
     const q = encodeURIComponent(`${game} boxart`);
     const url = `https://www.google.com/search?udm=2&q=${q}`;
@@ -257,7 +320,14 @@ function App() {
 
                 return (
                   <div key={system} style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, margin: '8px 0' }}>{system}</div>
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0' }}
+                      onDragOver={makeSystemDropHandlers(system).onDragOver}
+                      onDrop={makeSystemDropHandlers(system).onDrop}
+                    >
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>{system}</div>
+                      <div style={{ fontSize: 12, color: '#666' }}>Drop ROM to upload</div>
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
                       {visibleGames.map((r) => {
                         const key = `${r.system}/${r.game}`;
