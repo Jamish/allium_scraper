@@ -112,11 +112,30 @@ ipcMain.handle('save-rom-for-system', async (_, args: { system: string; filename
     const { system, filename, buffer, root } = args;
     const outDir = path.join(root, system);
     await fs.mkdir(outDir, { recursive: true });
-    const outPath = path.join(outDir, filename);
+    // Auto-unique the filename if it already exists. e.g. name (1).ext
+    const ext = path.extname(filename);
+    const base = path.basename(filename, ext);
+    let finalFilename = filename;
+    let outPath = path.join(outDir, finalFilename);
+    let attempt = 1;
+    // If file exists, choose a new name
+    while (true) {
+      try {
+        await fs.access(outPath);
+        // exists -> generate a new candidate
+        finalFilename = `${base} (${attempt})${ext}`;
+        outPath = path.join(outDir, finalFilename);
+        attempt++;
+      } catch (err) {
+        // access failed -> file does not exist, we can use outPath
+        break;
+      }
+    }
+
     const data = Buffer.from(buffer as any);
     await fs.writeFile(outPath, data);
     console.log(`save-rom-for-system: wrote ${outPath}`);
-    return { success: true, path: outPath };
+    return { success: true, path: outPath, filename: finalFilename };
   } catch (err: any) {
     console.error('Failed to save ROM for system:', err);
     return { success: false, error: String(err) };

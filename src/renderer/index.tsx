@@ -12,6 +12,9 @@ function App() {
   const [activeFilter, setActiveFilter] = React.useState<string>('All');
   const [showMissingThumbnails, setShowMissingThumbnails] = React.useState<boolean>(false);
   const [searchQuery, setSearchQuery] = React.useState<string>('');
+  const [dragHoverSystem, setDragHoverSystem] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<string | null>(null);
+  const toastTimer = React.useRef<number | null>(null);
 
   function fuzzyMatch(text: string, pattern: string) {
     // sequential fuzzy match: ensure all characters in `pattern` appear in `text` in order
@@ -141,8 +144,18 @@ function App() {
       onDragOver: (e: React.DragEvent) => {
         e.preventDefault();
       },
+      onDragEnter: (e: React.DragEvent) => {
+        e.preventDefault();
+        setDragHoverSystem(system);
+      },
+      onDragLeave: (e: React.DragEvent) => {
+        e.preventDefault();
+        // only clear if leaving the same system
+        setDragHoverSystem((cur) => (cur === system ? null : cur));
+      },
       onDrop: async (e: React.DragEvent) => {
         e.preventDefault();
+        setDragHoverSystem((cur) => (cur === system ? null : cur));
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
         const file = files[0] as File;
@@ -168,25 +181,29 @@ function App() {
           // @ts-ignore
           const result = await window.electronAPI.saveRomForSystem(system, sanitizedFilename, arrayBuffer, romsRoot ?? undefined);
           if (result && result.success) {
-            setStatus(`Saved ROM ${sanitizedFilename} -> ${result.path}`);
-            // add to romsList so it appears in UI
+            const finalFilename = result.filename ?? sanitizedFilename;
+            const lastDot2 = finalFilename.lastIndexOf('.');
+            const finalGameName = lastDot2 >= 0 ? finalFilename.slice(0, lastDot2) : finalFilename;
+            setStatus(`Saved ROM ${finalFilename} -> ${result.path}`);
+            // add to romsList so it appears in UI (avoid duplicates)
             setRomsList((prev) => {
-              // avoid duplicates
-              const exists = prev.some((p) => p.system === system && p.game === gameName);
+              const exists = prev.some((p) => p.system === system && p.game === finalGameName);
               if (exists) return prev;
-              return [...prev, { system, game: gameName }];
+              return [...prev, { system, game: finalGameName }];
             });
             // try to load an existing thumbnail for it (if already present)
             try {
               // @ts-ignore
-              const t = await window.electronAPI.getThumbnail(system, gameName, romsRoot ?? undefined);
+              const t = await window.electronAPI.getThumbnail(system, finalGameName, romsRoot ?? undefined);
               if (t) {
-                const key = `${system}/${gameName}`;
+                const key = `${system}/${finalGameName}`;
                 setRomPreviews((prev) => ({ ...prev, [key]: t as string }));
               }
             } catch (err) {
               // ignore
             }
+            // show a toast to indicate success
+            showToast(`Uploaded ${finalFilename}`);
           } else {
             console.error('Save ROM failed', result?.error);
             alert('Failed to save ROM: ' + (result?.error || 'unknown'));
@@ -197,6 +214,18 @@ function App() {
         }
       }
     };
+  }
+
+  function showToast(msg: string) {
+    if (toastTimer.current) {
+      window.clearTimeout(toastTimer.current);
+      toastTimer.current = null;
+    }
+    setToast(msg);
+    toastTimer.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimer.current = null;
+    }, 3000);
   }
 
   function openGoogleBoxartSearch(game: string) {
@@ -321,12 +350,26 @@ function App() {
                 return (
                   <div key={system} style={{ marginBottom: 18 }}>
                     <div
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0' }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        margin: '8px 0',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        border: dragHoverSystem === system ? '2px dashed #2a7' : '1px dashed transparent',
+                        background: dragHoverSystem === system ? 'rgba(42,122,80,0.06)' : 'transparent',
+                        transition: 'background 120ms, border 120ms'
+                      }}
                       onDragOver={makeSystemDropHandlers(system).onDragOver}
+                      onDragEnter={makeSystemDropHandlers(system).onDragEnter}
+                      onDragLeave={makeSystemDropHandlers(system).onDragLeave}
                       onDrop={makeSystemDropHandlers(system).onDrop}
                     >
                       <div style={{ fontSize: 18, fontWeight: 700 }}>{system}</div>
-                      <div style={{ fontSize: 12, color: '#666' }}>Drop ROM to upload</div>
+                      <div style={{ fontSize: 13, color: '#666', padding: '6px 10px', borderRadius: 6 }}>
+                        Drop ROM to upload
+                      </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
                       {visibleGames.map((r) => {
@@ -374,9 +417,10 @@ declare global {
     electronAPI: {
       saveImage: (name: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
       chooseRomsDirectory: () => Promise<string | null>;
-  getRomsList: (root: string) => Promise<{ systems: string[]; games: Array<{ system: string; game: string }> }>;
+      getRomsList: (root: string) => Promise<{ systems: string[]; games: Array<{ system: string; game: string }> }>;
       saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
       getThumbnail: (system: string, game: string, root?: string) => Promise<string | null>;
+      saveRomForSystem: (system: string, filename: string, buffer: ArrayBuffer, root?: string) => Promise<{ success: boolean; path?: string; filename?: string; error?: string }>;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
