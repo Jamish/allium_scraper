@@ -10,6 +10,21 @@ function App() {
   const [status, setStatus] = React.useState<string | null>(null);
   const [activeFilter, setActiveFilter] = React.useState<string>('All');
   const [showMissingThumbnails, setShowMissingThumbnails] = React.useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = React.useState<string>('');
+
+  function fuzzyMatch(text: string, pattern: string) {
+    // sequential fuzzy match: ensure all characters in `pattern` appear in `text` in order
+    const t = (text || '').toLowerCase();
+    const p = (pattern || '').toLowerCase();
+    if (!p) return true;
+    let ti = 0;
+    let pi = 0;
+    while (ti < t.length && pi < p.length) {
+      if (t[ti] === p[pi]) pi++;
+      ti++;
+    }
+    return pi === p.length;
+  }
 
   // Clean up any blob URLs created for previews when component unmounts
   React.useEffect(() => {
@@ -162,7 +177,7 @@ function App() {
 
           return (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ marginBottom: 12 }}>
                 <div className="tabs">
                 {tabs.map((t) => (
                   <button
@@ -175,7 +190,36 @@ function App() {
                   </button>
                 ))}
                 </div>
+              </div>
 
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  { romsRoot ? (
+                    <div style={{ fontSize: 16 }}>🔍</div>
+                  ) : null }
+                  { romsRoot ? (
+                    <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={romsRoot ? "Filter games" : "Choose a directory to enable filtering"}
+                    style={{ flex: 1, padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #ccc' }}
+                    disabled={!romsRoot}
+                    />
+                  ) : null }
+                  {romsRoot && searchQuery ? (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      title="Clear search"
+                      style={{ marginLeft: 4, padding: '4px 8px', fontSize: 14, cursor: 'pointer' }}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
                 {romsRoot ? (
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input
@@ -189,11 +233,15 @@ function App() {
               </div>
 
               {visibleSystems.map((system) => {
-                // apply the "missing thumbnail" filter per-system
+                // apply the "missing thumbnail" filter and fuzzy search per-system
                 const visibleGames = map[system].filter((r) => {
                   const key = `${r.system}/${r.game}`;
                   const hasPreview = !!romPreviews[key];
-                  return showMissingThumbnails ? !hasPreview : true;
+                  // exclude if we're showing only missing thumbnails and this one has a preview
+                  if (showMissingThumbnails && hasPreview) return false;
+                  // apply fuzzy search (if any query provided)
+                  if (searchQuery && !fuzzyMatch(r.game, searchQuery)) return false;
+                  return true;
                 });
 
                 if (visibleGames.length === 0) return null;
