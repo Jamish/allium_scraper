@@ -161,6 +161,67 @@ ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string; 
   }
 });
 
+// Delete a thumbnail file at <root>/<system>/Imgs/<game>.png
+ipcMain.handle('delete-thumbnail', async (_, args: { system: string; game: string; root: string }) => {
+  try {
+    const { system, game, root } = args;
+    const p = path.join(root, system, 'Imgs', `${game}.png`);
+    try {
+      await fs.unlink(p);
+      console.log(`delete-thumbnail: removed ${p}`);
+      return { success: true, path: p };
+    } catch (err: any) {
+      console.error('delete-thumbnail: failed to unlink', err);
+      return { success: false, error: String(err) };
+    }
+  } catch (err: any) {
+    console.error('delete-thumbnail error', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+// Delete ROM file(s) matching the base game name in <root>/<system>
+ipcMain.handle('delete-rom', async (_, args: { system: string; game: string; root: string }) => {
+  try {
+    const { system, game, root } = args;
+    const systemPath = path.join(root, system);
+    const dirents = await fs.readdir(systemPath, { withFileTypes: true });
+    const deleted: string[] = [];
+    for (const d of dirents) {
+      if (!d.isFile()) continue;
+      if (d.name.startsWith('.')) continue;
+      const base = path.parse(d.name).name;
+      if (base === game) {
+        const p = path.join(systemPath, d.name);
+        try {
+          await fs.unlink(p);
+          deleted.push(d.name);
+          console.log(`delete-rom: removed ${p}`);
+        } catch (err: any) {
+          console.error('delete-rom: failed to unlink', p, err);
+        }
+      }
+    }
+    // also try to remove thumbnail
+    const thumbPath = path.join(root, system, 'Imgs', `${game}.png`);
+    let thumbDeleted = false;
+    try {
+      await fs.unlink(thumbPath);
+      thumbDeleted = true;
+      console.log(`delete-rom: removed thumbnail ${thumbPath}`);
+    } catch (err: any) {
+      // ignore if not present
+    }
+    if (deleted.length === 0) {
+      return { success: false, error: 'No matching ROM files found' };
+    }
+    return { success: true, deleted, thumbDeleted };
+  } catch (err: any) {
+    console.error('delete-rom error', err);
+    return { success: false, error: String(err) };
+  }
+});
+
 // Open a URL in the default OS browser
 ipcMain.handle('open-external', async (_, args: { url: string }) => {
   try {

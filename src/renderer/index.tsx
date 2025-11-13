@@ -403,6 +403,7 @@ function App() {
                                             <div
                                               key={key}
                                               style={{
+                                                position: 'relative',
                                                 border: '1px solid #ddd',
                                                 padding: 8,
                                                 borderRadius: 6,
@@ -412,15 +413,115 @@ function App() {
                                                 borderColor: uploadedKey === key ? '#2a7a50' : undefined
                                               }}
                                             >
+                                              <button
+                                                onClick={async () => {
+                                                  if (!romsRoot) return;
+                                                  if (!confirm(`Delete ROM '${r.game}' and its thumbnail? This cannot be undone.`)) return;
+                                                  try {
+                                                    // @ts-ignore
+                                                    const res = await window.electronAPI.deleteRom(r.system, r.game, romsRoot);
+                                                    if (res && res.success) {
+                                                      // remove from romsList
+                                                      setRomsList((prev) => prev.filter((p) => !(p.system === r.system && p.game === r.game)));
+                                                      // remove preview if any
+                                                      const k = `${r.system}/${r.game}`;
+                                                      setRomPreviews((prev) => {
+                                                        const copy = { ...prev };
+                                                        delete copy[k];
+                                                        return copy;
+                                                      });
+                                                      setRomSavedPaths((prev) => {
+                                                        const copy = { ...prev };
+                                                        delete copy[k];
+                                                        return copy;
+                                                      });
+                                                      showToast(`Deleted ROM ${r.game}`);
+                                                    } else {
+                                                      alert('Failed to delete ROM: ' + (res?.error || 'unknown'));
+                                                    }
+                                                  } catch (err) {
+                                                    console.error('delete rom error', err);
+                                                    alert('Failed to delete ROM');
+                                                  }
+                                                }}
+                                                title="Delete ROM"
+                                                style={{
+                                                  position: 'absolute',
+                                                  top: 6,
+                                                  right: 6,
+                                                  background: 'rgba(0,0,0,0.6)',
+                                                  color: '#fff',
+                                                  border: 'none',
+                                                  borderRadius: 12,
+                                                  width: 24,
+                                                  height: 24,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                  cursor: 'pointer',
+                                                  zIndex: 3
+                                                }}
+                                              >
+                                                ×
+                                              </button>
                             <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
                             <div
                               className={'drop-area'}
-                              onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
-                              onDrop={makeDropHandlers(r.system, r.game).onDrop}
-                              style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                onDragOver={makeDropHandlers(r.system, r.game).onDragOver}
+                                onDrop={makeDropHandlers(r.system, r.game).onDrop}
+                                style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
                             >
                               {preview ? (
-                                <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
+                                  <>
+                                    <img src={preview} alt={`preview ${key}`} style={{ maxWidth: '100%', maxHeight: 72, objectFit: 'contain' }} />
+                                    <button
+                                      onClick={async () => {
+                                        if (!romsRoot) return;
+                                        if (!confirm(`Delete thumbnail for ${r.game}?`)) return;
+                                        try {
+                                          // @ts-ignore
+                                          const res = await window.electronAPI.deleteThumbnail(r.system, r.game, romsRoot);
+                                          if (res && res.success) {
+                                            const k = `${r.system}/${r.game}`;
+                                            setRomPreviews((prev) => {
+                                              const copy = { ...prev };
+                                              delete copy[k];
+                                              return copy;
+                                            });
+                                            setRomSavedPaths((prev) => {
+                                              const copy = { ...prev };
+                                              delete copy[k];
+                                              return copy;
+                                            });
+                                            showToast('Thumbnail deleted');
+                                          } else {
+                                            alert('Failed to delete thumbnail: ' + (res?.error || 'unknown'));
+                                          }
+                                        } catch (err) {
+                                          console.error('delete thumbnail error', err);
+                                          alert('Failed to delete thumbnail');
+                                        }
+                                      }}
+                                      title="Delete thumbnail"
+                                      style={{
+                                        position: 'absolute',
+                                        top: 6,
+                                        right: 6,
+                                        background: 'rgba(0,0,0,0.6)',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: 12,
+                                        width: 24,
+                                        height: 24,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      ×
+                                    </button>
+                                  </>
                               ) : (
                                 <div style={{ fontSize: 12, color: '#333' }}>Drop box art here</div>
                               )}
@@ -455,6 +556,8 @@ declare global {
       saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
       getThumbnail: (system: string, game: string, root?: string) => Promise<string | null>;
       saveRomForSystem: (system: string, filename: string, buffer: ArrayBuffer, root?: string) => Promise<{ success: boolean; path?: string; filename?: string; error?: string }>;
+  deleteThumbnail: (system: string, game: string, root?: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+  deleteRom: (system: string, game: string, root?: string) => Promise<{ success: boolean; deleted?: string[]; thumbDeleted?: boolean; error?: string }>;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
