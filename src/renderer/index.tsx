@@ -15,6 +15,9 @@ function App() {
   const [dragHoverSystem, setDragHoverSystem] = React.useState<string | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
   const toastTimer = React.useRef<number | null>(null);
+  const dragCountersRef = React.useRef<Record<string, number>>({});
+  const [uploadedKey, setUploadedKey] = React.useState<string | null>(null);
+  const uploadedTimerRef = React.useRef<number | null>(null);
 
   function fuzzyMatch(text: string, pattern: string) {
     // sequential fuzzy match: ensure all characters in `pattern` appear in `text` in order
@@ -146,12 +149,16 @@ function App() {
       },
       onDragEnter: (e: React.DragEvent) => {
         e.preventDefault();
+        const cur = dragCountersRef.current[system] ?? 0;
+        dragCountersRef.current[system] = cur + 1;
         setDragHoverSystem(system);
       },
       onDragLeave: (e: React.DragEvent) => {
         e.preventDefault();
-        // only clear if leaving the same system
-        setDragHoverSystem((cur) => (cur === system ? null : cur));
+        const cur = dragCountersRef.current[system] ?? 0;
+        const next = Math.max(0, cur - 1);
+        dragCountersRef.current[system] = next;
+        if (next === 0) setDragHoverSystem((curS) => (curS === system ? null : curS));
       },
       onDrop: async (e: React.DragEvent) => {
         e.preventDefault();
@@ -185,12 +192,23 @@ function App() {
             const lastDot2 = finalFilename.lastIndexOf('.');
             const finalGameName = lastDot2 >= 0 ? finalFilename.slice(0, lastDot2) : finalFilename;
             setStatus(`Saved ROM ${finalFilename} -> ${result.path}`);
-            // add to romsList so it appears in UI (avoid duplicates)
+            // add to romsList so it appears in UI (avoid duplicates) — add at beginning
             setRomsList((prev) => {
               const exists = prev.some((p) => p.system === system && p.game === finalGameName);
               if (exists) return prev;
-              return [...prev, { system, game: finalGameName }];
+              return [{ system, game: finalGameName }, ...prev];
             });
+            const newKey = `${system}/${finalGameName}`;
+            // set uploaded key for animation
+            if (uploadedTimerRef.current) {
+              window.clearTimeout(uploadedTimerRef.current);
+              uploadedTimerRef.current = null;
+            }
+            setUploadedKey(newKey);
+            uploadedTimerRef.current = window.setTimeout(() => {
+              setUploadedKey(null);
+              uploadedTimerRef.current = null;
+            }, 1800);
             // try to load an existing thumbnail for it (if already present)
             try {
               // @ts-ignore
@@ -252,6 +270,11 @@ function App() {
 
   return (
     <div id="app">
+      {toast ? (
+        <div style={{ position: 'fixed', top: 16, right: 16, background: 'rgba(0,0,0,0.78)', color: '#fff', padding: '8px 12px', borderRadius: 8, zIndex: 9999, boxShadow: '0 6px 20px rgba(0,0,0,0.2)' }}>
+          {toast}
+        </div>
+      ) : null}
       <div style={{ marginBottom: 12 }}>
         <button onClick={chooseRomsDirectory}>Choose ROMs directory</button>
         {romsRoot && <span style={{ marginLeft: 12 }}>Root: {romsRoot}</span>}
@@ -377,7 +400,18 @@ function App() {
                         const preview = romPreviews[key];
                         const saved = romSavedPaths[key];
                         return (
-                          <div key={key} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 6 }}>
+                                            <div
+                                              key={key}
+                                              style={{
+                                                border: '1px solid #ddd',
+                                                padding: 8,
+                                                borderRadius: 6,
+                                                transition: 'transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease',
+                                                transform: uploadedKey === key ? 'scale(1.03)' : undefined,
+                                                boxShadow: uploadedKey === key ? '0 8px 24px rgba(42,122,80,0.14)' : undefined,
+                                                borderColor: uploadedKey === key ? '#2a7a50' : undefined
+                                              }}
+                                            >
                             <div style={{ fontWeight: 600, marginBottom: 8 }}>{r.game}</div>
                             <div
                               className={'drop-area'}
