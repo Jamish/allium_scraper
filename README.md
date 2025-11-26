@@ -1,3 +1,5 @@
+# WARNING: HERE VIBE CODED MONSTROSITIES
+
 # Boxart Scraper — Electron + React (TypeScript) Boilerplate
 
 This is a minimal Electron application using TypeScript and React. It provides a simple UI where you can drag an image from your desktop into the app and display it.
