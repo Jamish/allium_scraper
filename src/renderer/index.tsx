@@ -12,6 +12,7 @@ function App() {
   const [activeFilter, setActiveFilter] = React.useState<string>('All');
   const [showMissingThumbnails, setShowMissingThumbnails] = React.useState<boolean>(false);
   const [searchQuery, setSearchQuery] = React.useState<string>('');
+  const [thumbnailDir, setThumbnailDir] = React.useState<string>('Imgs');
   const [dragHoverSystem, setDragHoverSystem] = React.useState<string | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
   const toastTimer = React.useRef<number | null>(null);
@@ -45,58 +46,77 @@ function App() {
     };
   }, [romPreviews]);
 
+  async function refreshThumbnails(currentRoot: string) {
+    const previews: Record<string, string> = {};
+    const savedPaths: Record<string, string> = {};
+    await Promise.all((romsList || []).map(async (l: any) => {
+      try {
+        // @ts-ignore
+        const t = await window.electronAPI.getThumbnail(l.system, l.game, currentRoot, thumbnailDir);
+        if (t) {
+          const k = `${l.system}/${l.game}`;
+          previews[k] = t as string;
+          savedPaths[k] = `${currentRoot}/${l.system}/${thumbnailDir}/${l.game}.png`;
+        }
+      } catch (err) {
+        // ignore per-item errors
+      }
+    }));
+    setRomPreviews(previews);
+    setRomSavedPaths(savedPaths);
+  }
+
+  // When thumbnailDir or romsRoot changes, refresh loaded thumbnails
+  React.useEffect(() => {
+    if (!romsRoot) return;
+    refreshThumbnails(romsRoot);
+  }, [thumbnailDir, romsRoot, romsList]);
+
   async function chooseRomsDirectory() {
+    // Step 1: pick directory (fatal if this fails)
+    let selected: string | null = null;
     try {
       // @ts-ignore
-      const selected = await window.electronAPI.chooseRomsDirectory();
-      if (!selected) return;
+      selected = await window.electronAPI.chooseRomsDirectory();
+    } catch (err) {
+      console.error('Directory picker failed', err);
+      setStatus('Failed to choose directory');
+      alert('Failed to choose directory');
+      return;
+    }
+    if (!selected) return;
+
+    // Step 2: load roms list (non-fatal errors handled locally)
+    try {
       console.log('chooseRomsDirectory selected', selected);
       setRomsRoot(selected);
       setStatus(`Selected root: ${selected}`);
       // @ts-ignore
       const res = await window.electronAPI.getRomsList(selected);
-      // res should now be { systems: string[], games: Array<{system, game}> }
-      console.log('getRomsList returned', res?.games?.length ?? 0);
       const gamesList = (res && res.games) ? res.games : [];
       const systems = (res && res.systems) ? res.systems : Array.from(new Set(gamesList.map((l: any) => l.system)));
       setRomsList(gamesList || []);
       setSystemsList(systems || []);
       const systemsCount = systems.length;
       const gamesCount = gamesList.length;
-      // Load any existing thumbnails from output/<system>/<game>.png
       setStatus('Loading existing thumbnails...');
-      const previews: Record<string, string> = {};
-      const savedPaths: Record<string, string> = {};
-      await Promise.all((gamesList || []).map(async (l: any) => {
-        try {
-          // @ts-ignore
-          const t = await window.electronAPI.getThumbnail(l.system, l.game, selected);
-          if (t) {
-            const k = `${l.system}/${l.game}`;
-            previews[k] = t as string;
-            savedPaths[k] = `${selected}/${l.system}/Imgs/${l.game}.png`;
-          }
-        } catch (err) {
-          // ignore per-item errors
-        }
-      }));
-      setRomPreviews(previews);
-      setRomSavedPaths(savedPaths);
-      setStatus(`Found ${gamesCount} games across ${systemsCount} systems — ${Object.keys(previews).length} existing thumbnails`);
-      // fetch system definitions (csv)
-      try {
-        // @ts-ignore
-        const defs = await window.electronAPI.getSystemsDefs();
-        if (defs && defs.success) {
-          setSystemsDefs(defs.items || []);
-        }
-      } catch (err) {
-        // ignore
+      await refreshThumbnails(selected);
+      setStatus(`Found ${gamesCount} games across ${systemsCount} systems — ${Object.keys(romPreviews).length} existing thumbnails`);
+    } catch (err) {
+      console.error('Failed to load ROMs or thumbnails', err);
+      setStatus('Loaded directory, but failed to load thumbnails');
+      // Do not alert here to avoid confusing success with error
+    }
+
+    // Step 3: fetch system definitions (non-fatal)
+    try {
+      // @ts-ignore
+      const defs = await window.electronAPI.getSystemsDefs();
+      if (defs && defs.success) {
+        setSystemsDefs(defs.items || []);
       }
     } catch (err) {
-      console.error('Failed to choose roms directory', err);
-      setStatus('Failed to choose directory');
-      alert('Failed to choose directory');
+      console.warn('getSystemsDefs failed (non-fatal)', err);
     }
   }
 
@@ -126,7 +146,7 @@ function App() {
         try {
           const arrayBuffer = await file.arrayBuffer();
           // @ts-ignore
-          const result = await window.electronAPI.saveImageForGame(system, game, arrayBuffer, romsRoot ?? undefined);
+          const result = await window.electronAPI.saveImageForGame(system, game, arrayBuffer, romsRoot ?? undefined, thumbnailDir);
           if (result && result.success) {
             setSavedPath(result.path ?? null);
             setRomSavedPaths((prev) => ({ ...prev, [key]: result.path ?? '' }));
@@ -225,7 +245,7 @@ function App() {
             // try to load an existing thumbnail for it (if already present)
             try {
               // @ts-ignore
-              const t = await window.electronAPI.getThumbnail(system, finalGameName, romsRoot ?? undefined);
+              const t = await window.electronAPI.getThumbnail(system, finalGameName, romsRoot ?? undefined, thumbnailDir);
               if (t) {
                 const key = `${system}/${finalGameName}`;
                 setRomPreviews((prev) => ({ ...prev, [key]: t as string }));
@@ -358,14 +378,28 @@ function App() {
 
               <div style={{ marginBottom: 12 }}>
                 {romsRoot ? (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={showMissingThumbnails}
-                      onChange={(e) => setShowMissingThumbnails(e.target.checked)}
-                    />
-                    <span style={{ fontSize: 13 }}>Show Missing Thumbnails</span>
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label style={{ fontSize: 13 }}>Thumbnail folder:</label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input type="radio" name="thumbdir" value="Imgs" checked={thumbnailDir === 'Imgs'} onChange={() => setThumbnailDir('Imgs')} />
+                        <span style={{ fontSize: 13 }}>Imgs</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input type="radio" name="thumbdir" value=".media" checked={thumbnailDir === '.media'} onChange={() => setThumbnailDir('.media')} />
+                        <span style={{ fontSize: 13 }}>.media</span>
+                      </label>
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={showMissingThumbnails}
+                        onChange={(e) => setShowMissingThumbnails(e.target.checked)}
+                      />
+                      <span style={{ fontSize: 13 }}>Show Missing Thumbnails</span>
+                    </label>
+                  </div>
                 ) : null}
               </div>
 
@@ -476,7 +510,7 @@ function App() {
                                                   if (!confirm(`Delete ROM '${r.game}' and its thumbnail? This cannot be undone.`)) return;
                                                   try {
                                                     // @ts-ignore
-                                                    const res = await window.electronAPI.deleteRom(r.system, r.game, romsRoot);
+                                                    const res = await window.electronAPI.deleteRom(r.system, r.game, romsRoot, thumbnailDir);
                                                     if (res && res.success) {
                                                       // remove from romsList
                                                       setRomsList((prev) => prev.filter((p) => !(p.system === r.system && p.game === r.game)));
@@ -537,7 +571,7 @@ function App() {
                                         if (!confirm(`Delete thumbnail for ${r.game}?`)) return;
                                         try {
                                           // @ts-ignore
-                                          const res = await window.electronAPI.deleteThumbnail(r.system, r.game, romsRoot);
+                                          const res = await window.electronAPI.deleteThumbnail(r.system, r.game, romsRoot, thumbnailDir);
                                           if (res && res.success) {
                                             const k = `${r.system}/${r.game}`;
                                             setRomPreviews((prev) => {
@@ -610,11 +644,11 @@ declare global {
       saveImage: (name: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
       chooseRomsDirectory: () => Promise<string | null>;
       getRomsList: (root: string) => Promise<{ systems: string[]; games: Array<{ system: string; game: string }> }>;
-      saveImageForGame: (system: string, game: string, buffer: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>;
-      getThumbnail: (system: string, game: string, root?: string) => Promise<string | null>;
-      saveRomForSystem: (system: string, filename: string, buffer: ArrayBuffer, root?: string) => Promise<{ success: boolean; path?: string; filename?: string; error?: string }>;
-  deleteThumbnail: (system: string, game: string, root?: string) => Promise<{ success: boolean; path?: string; error?: string }>;
-  deleteRom: (system: string, game: string, root?: string) => Promise<{ success: boolean; deleted?: string[]; thumbDeleted?: boolean; error?: string }>;
+        saveImageForGame: (system: string, game: string, buffer: ArrayBuffer, root?: string, thumbnailDir?: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+        getThumbnail: (system: string, game: string, root?: string, thumbnailDir?: string) => Promise<string | null>;
+        saveRomForSystem: (system: string, filename: string, buffer: ArrayBuffer, root?: string) => Promise<{ success: boolean; path?: string; filename?: string; error?: string }>;
+      deleteThumbnail: (system: string, game: string, root?: string, thumbnailDir?: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+      deleteRom: (system: string, game: string, root?: string, thumbnailDir?: string) => Promise<{ success: boolean; deleted?: string[]; thumbDeleted?: boolean; error?: string }>;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
     };
   }

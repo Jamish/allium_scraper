@@ -154,18 +154,19 @@ ipcMain.handle('get-roms-list', async (_, args: { root: string }) => {
 });
 
 // Save image for a specific game to output/<system>/<game>.png
-ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: string; buffer: Uint8Array | ArrayBuffer; root: string }) => {
+ipcMain.handle('save-image-for-game', async (_, args: { system: string; game: string; buffer: Uint8Array | ArrayBuffer; root: string; thumbnailDir?: string }) => {
   try {
-    const { system, game, buffer, root } = args;
+    const { system, game, buffer, root, thumbnailDir } = args;
+    const dir = thumbnailDir && thumbnailDir.length > 0 ? thumbnailDir : 'Imgs';
     const inputBuffer = Buffer.from(buffer as any);
     const pngBuffer = await sharp(inputBuffer)
       .resize({ width: 250, height: 250, fit: 'inside' })
       .png()
       .toBuffer();
 
-  const outputDir = path.join(root, system, 'Imgs');
-  await fs.mkdir(outputDir, { recursive: true });
-  const outPath = path.join(outputDir, `${game}.png`);
+    const outputDir = path.join(root, system, dir);
+    await fs.mkdir(outputDir, { recursive: true });
+    const outPath = path.join(outputDir, `${game}.png`);
     await fs.writeFile(outPath, pngBuffer);
     console.log(`save-image-for-game: wrote ${outPath}`);
     return { success: true, path: outPath };
@@ -212,10 +213,11 @@ ipcMain.handle('save-rom-for-system', async (_, args: { system: string; filename
 });
 
 // Return an existing thumbnail (output/<system>/<game>.png) as a data URL, or null if not present
-ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string; root: string }) => {
+ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string; root: string; thumbnailDir?: string }) => {
   try {
-    const { system, game, root } = args;
-    const p = path.join(root, system, 'Imgs', `${game}.png`);
+    const { system, game, root, thumbnailDir } = args;
+    const dir = thumbnailDir && thumbnailDir.length > 0 ? thumbnailDir : 'Imgs';
+    const p = path.join(root, system, dir, `${game}.png`);
     try {
       const data = await fs.readFile(p);
       const base = data.toString('base64');
@@ -231,10 +233,11 @@ ipcMain.handle('get-thumbnail', async (_, args: { system: string; game: string; 
 });
 
 // Delete a thumbnail file at <root>/<system>/Imgs/<game>.png
-ipcMain.handle('delete-thumbnail', async (_, args: { system: string; game: string; root: string }) => {
+ipcMain.handle('delete-thumbnail', async (_, args: { system: string; game: string; root: string; thumbnailDir?: string }) => {
   try {
-    const { system, game, root } = args;
-    const p = path.join(root, system, 'Imgs', `${game}.png`);
+    const { system, game, root, thumbnailDir } = args;
+    const dir = thumbnailDir && thumbnailDir.length > 0 ? thumbnailDir : 'Imgs';
+    const p = path.join(root, system, dir, `${game}.png`);
     try {
       await fs.unlink(p);
       console.log(`delete-thumbnail: removed ${p}`);
@@ -250,9 +253,9 @@ ipcMain.handle('delete-thumbnail', async (_, args: { system: string; game: strin
 });
 
 // Delete ROM file(s) matching the base game name in <root>/<system>
-ipcMain.handle('delete-rom', async (_, args: { system: string; game: string; root: string }) => {
+ipcMain.handle('delete-rom', async (_, args: { system: string; game: string; root: string; thumbnailDir?: string }) => {
   try {
-    const { system, game, root } = args;
+    const { system, game, root, thumbnailDir } = args;
     const systemPath = path.join(root, system);
     const dirents = await fs.readdir(systemPath, { withFileTypes: true });
     const deleted: string[] = [];
@@ -272,7 +275,8 @@ ipcMain.handle('delete-rom', async (_, args: { system: string; game: string; roo
       }
     }
     // also try to remove thumbnail
-    const thumbPath = path.join(root, system, 'Imgs', `${game}.png`);
+    const dir = thumbnailDir && thumbnailDir.length > 0 ? thumbnailDir : 'Imgs';
+    const thumbPath = path.join(root, system, dir, `${game}.png`);
     let thumbDeleted = false;
     try {
       await fs.unlink(thumbPath);
