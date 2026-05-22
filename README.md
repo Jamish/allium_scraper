@@ -1,5 +1,7 @@
 # Allium Boxart Scraper
 
+*Disclaimer: This was vibe-coded!*
+
 A desktop app for managing box art thumbnails for your ROM library targeting Allium OS. Point it at your ROMs directory and it scans for games across all configured systems, then lets you drag-and-drop box art images onto each game card. Images are saved as PNGs into the appropriate system thumbnail folder (`Imgs` or `.media`).
 
 ![Screenshot](blob/screenshot.png)
